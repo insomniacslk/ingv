@@ -75,6 +75,7 @@ func main() {
 		log.Printf("Error: %v", err)
 	}
 	filteredRecords := make([]ingv.QuakeInfo, 0)
+	origin := ingv.Loc{Lat: *flagLatitude, Lon: *flagLongitude}
 	if !*flagNoWorkaround {
 		idx := 0
 		// if we are using the radius API bug workaround, limit and radius
@@ -83,13 +84,14 @@ func main() {
 			if idx >= *flagLimit {
 				break
 			}
+			dest := ingv.Loc{Lat: rec.Latitude, Lon: rec.Longitude}
 			if pflag.CommandLine.Changed("max-radius") {
-				if ingv.DistanceInKm(*flagLatitude, *flagLongitude, rec.Latitude, rec.Longitude) > *flagMaxRadius {
+				if ingv.DistanceInKm(origin, dest) > *flagMaxRadius {
 					continue
 				}
 			}
 			if pflag.CommandLine.Changed("min-radius") {
-				if ingv.DistanceInKm(*flagLatitude, *flagLongitude, rec.Latitude, rec.Longitude) < *flagMinRadius {
+				if ingv.DistanceInKm(origin, dest) < *flagMinRadius {
 					continue
 				}
 			}
