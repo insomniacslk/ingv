@@ -16,17 +16,7 @@ import (
 // time format used by the INGV API
 const TimeFormat = "2006-01-02T15:04:05.999999"
 
-var TimeLocation *time.Location
-
-func init() {
-	// the INGV API returns local time, so we load the Rome TZ to use for every
-	// timestamp parsing
-	loc, err := time.LoadLocation("Europe/Rome")
-	if err != nil {
-		log.Panicf("Failed to load timezone for location Europe/Rome: %v", err)
-	}
-	TimeLocation = loc
-}
+var TimeLocation = time.UTC
 
 // API: https://webservices.ingv.it/swagger-ui/dist/?url=https://ingv.github.io/openapi/fdsnws/event/0.0.1/event.yaml
 // example: http://webservices.ingv.it/fdsnws/event/1/query?starttime=2012-05-29T00:00:00&endtime=2012-05-29T23:59:59&format=text
