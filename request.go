@@ -111,6 +111,7 @@ func Get(params ...Param) ([]QuakeInfo, error) {
 	}
 	defer resp.Body.Close()
 	// per-IP rate limit
+	// TODO handle rate limit
 	ratelimit := resp.Header.Get("X-RateLimit-Limit")
 	ratelimitReset := resp.Header.Get("X-RateLimit-Reset")
 	log.Printf("Rate limit: %s, reset: %s", ratelimit, ratelimitReset)
