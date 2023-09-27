@@ -22,12 +22,11 @@ var (
 	flagLimit        = pflag.IntP("limit", "i", 10, "Max number of results to show")
 	flagOrderBy      = pflag.StringP("order-by", "b", "time", "Order by time or magnitude")
 	flagJSON         = pflag.BoolP("json", "j", false, "Print output as json")
+	// it appears that the radius is not computed properly by the API, so this flag
+	// controls the use of a workaround. Note that the results with the workaround
+	// might be fewer than expected.
+	flagNoWorkaround = pflag.BoolP("no-workaround", "W", false, "Do not use a workaround for a bug in the radius API")
 )
-
-// it appears that the radius is not computed properly by the API, so this flag
-// controls the use of a workaround. Note that the results with the workaround
-// might be fewer than expected.
-const buggyRadiusAPI = true
 
 func main() {
 	pflag.CommandLine.SortFlags = false
@@ -49,7 +48,7 @@ func main() {
 	} else if pflag.CommandLine.Changed("latitude") || pflag.CommandLine.Changed("longitude") {
 		log.Fatalf("Both latitude and longitude must be specified")
 	}
-	if !buggyRadiusAPI {
+	if *flagNoWorkaround {
 		if pflag.CommandLine.Changed("max-radius") {
 			if !latLonSpecified {
 				log.Fatalf("latitude and longitude must be specified when using max-radius")
@@ -62,8 +61,11 @@ func main() {
 			}
 			params = append(params, ingv.WithMinRadius(*flagMinRadius))
 		}
+		// only use the API limit flag if we are not working around the buggy
+		// radius API. If we are using the workaround, the limit is applied
+		// later after requesting every entry for the time range.
+		params = append(params, ingv.WithLimit(*flagLimit))
 	}
-	params = append(params, ingv.WithLimit(*flagLimit))
 	params = append(params, ingv.WithOrderBy(*flagOrderBy))
 	// only "text" format is supported for now
 	params = append(params, ingv.WithFormat("text"))
@@ -72,30 +74,28 @@ func main() {
 	if err != nil {
 		log.Printf("Error: %v", err)
 	}
-	if len(records) == 0 {
-		fmt.Printf("No earthquakes found with the specified parameters\n")
-	}
-	idx := 0
 	filteredRecords := make([]ingv.QuakeInfo, 0)
-	for _, rec := range records {
-		if buggyRadiusAPI {
+	if !*flagNoWorkaround {
+		idx := 0
+		// if we are using the radius API bug workaround, limit and radius
+		// have to be handled here
+		for _, rec := range records {
+			if idx >= *flagLimit {
+				break
+			}
 			if pflag.CommandLine.Changed("max-radius") {
-				// work around an API bug. However this is not equivalent, as it may return
-				// fewer results than expected.
 				if ingv.DistanceInKm(*flagLatitude, *flagLongitude, rec.Latitude, rec.Longitude) > *flagMaxRadius {
 					continue
 				}
 			}
 			if pflag.CommandLine.Changed("min-radius") {
-				// work around an API bug. However this is not equivalent, as it may return
-				// fewer results than expected.
 				if ingv.DistanceInKm(*flagLatitude, *flagLongitude, rec.Latitude, rec.Longitude) < *flagMinRadius {
 					continue
 				}
 			}
+			filteredRecords = append(filteredRecords, rec)
+			idx++
 		}
-		filteredRecords = append(filteredRecords, rec)
-		idx++
 	}
 	if *flagJSON {
 		out, err := json.Marshal(filteredRecords)
@@ -104,7 +104,11 @@ func main() {
 		}
 		fmt.Println(string(out))
 	} else {
-		for _, rec := range filteredRecords {
+		if len(filteredRecords) == 0 {
+			fmt.Printf("No earthquakes found with the specified parameters\n")
+			return
+		}
+		for idx, rec := range filteredRecords {
 			fmt.Printf("%d) %s\n    Location: %s\n    Magnitude: %.1f\n    Map: https://www.google.com/maps/search/%f,%f/@%f,%f\n    Details: https://terremoti.ingv.it/event/%d for details\n", idx+1, rec.Time, rec.EventLocationName, rec.Magnitude, rec.Latitude, rec.Longitude, rec.Latitude, rec.Longitude, rec.EventID)
 		}
 	}

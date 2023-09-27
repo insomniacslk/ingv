@@ -192,7 +192,8 @@ func WithFormat(f string) Param {
 // computation in the API.
 //
 // Warning: using this function is different than using With{Min,Max}RadiusKm,
-// because the filtering happens after the search, so it may yield fewer results.
+// because the filtering happens after the search, so you have to handle that
+// manually.
 func DistanceInKm(lat1, lon1, lat2, lon2 float64) float64 {
 	latRad := deg2rad(lat1 - lat2)
 	lonRad := deg2rad(lon1 - lon2)
