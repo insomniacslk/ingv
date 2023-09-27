@@ -114,6 +114,7 @@ func Get(params ...Param) ([]QuakeInfo, error) {
 		Path:     "/fdsnws/event/1/query",
 		RawQuery: r.ToValues().Encode(),
 	}
+	log.Printf("Connecting to %s", u.String())
 	resp, err := http.Get(u.String())
 	if err != nil {
 		return nil, err

@@ -16,11 +16,16 @@ var (
 	flagEndTime      = pflag.DurationP("end-time", "e", 0, "End time, relative (FIXME: add support for absolute time)")
 	flagLatitude     = pflag.Float64P("latitude", "l", 0.0, "Latitude. If unspecified do not restrict by location. If specified, longitude is mandatory")
 	flagLongitude    = pflag.Float64P("longitude", "L", 0.0, "Longitude. If unspecified do not restrict by location. If specified, latitude is mandatory")
-	flagMaxRadius    = pflag.Float64P("max-radius", "R", 0.0, "Max radius in km from lat/lon. If unspecified, no radius limit is set. If specified, lat/lon are mandatory")
-	flagMinRadius    = pflag.Float64P("min-radius", "r", 0.0, "Min radius in km from lat/lon. If unspecified, no radius limit is set. If specified, lat/lon are mandatory")
+	flagMaxRadius    = pflag.Float64P("max-radius", "R", 0.0, "Max radius in degrees from lat/lon. If unspecified, no radius limit is set. If specified, lat/lon are mandatory")
+	flagMinRadius    = pflag.Float64P("min-radius", "r", 0.0, "Min radius in degrees from lat/lon. If unspecified, no radius limit is set. If specified, lat/lon are mandatory")
 	flagLimit        = pflag.IntP("limit", "i", 10, "Max number of results to show")
 	flagOrderBy      = pflag.StringP("order-by", "b", "time", "Order by time or magnitude")
 )
+
+// it appears that the radius is not computed properly by the API, so this flag
+// controls the use of a workaround. Note that the results with the workaround
+// might be fewer than expected.
+const buggyRadiusAPI = true
 
 func main() {
 	pflag.CommandLine.SortFlags = false
@@ -42,17 +47,19 @@ func main() {
 	} else if pflag.CommandLine.Changed("latitude") || pflag.CommandLine.Changed("longitude") {
 		log.Fatalf("Both latitude and longitude must be specified")
 	}
-	if pflag.CommandLine.Changed("max-radius") {
-		if !latLonSpecified {
-			log.Fatalf("latitude and longitude must be specified when using max-radius")
+	if !buggyRadiusAPI {
+		if pflag.CommandLine.Changed("max-radius") {
+			if !latLonSpecified {
+				log.Fatalf("latitude and longitude must be specified when using max-radius")
+			}
+			params = append(params, ingv.WithMaxRadius(*flagMaxRadius))
 		}
-		params = append(params, ingv.WithMaxRadius(*flagMaxRadius))
-	}
-	if pflag.CommandLine.Changed("min-radius") {
-		if !latLonSpecified {
-			log.Fatalf("latitude and longitude must be specified when using min-radius")
+		if pflag.CommandLine.Changed("min-radius") {
+			if !latLonSpecified {
+				log.Fatalf("latitude and longitude must be specified when using min-radius")
+			}
+			params = append(params, ingv.WithMinRadius(*flagMinRadius))
 		}
-		params = append(params, ingv.WithMinRadius(*flagMinRadius))
 	}
 	params = append(params, ingv.WithLimit(*flagLimit))
 	params = append(params, ingv.WithOrderBy(*flagOrderBy))
@@ -66,8 +73,26 @@ func main() {
 	if len(records) == 0 {
 		fmt.Printf("No earthquakes found with the specified parameters\n")
 	}
-	for idx, rec := range records {
+	idx := 0
+	for _, rec := range records {
+		if buggyRadiusAPI {
+			if pflag.CommandLine.Changed("max-radius") {
+				// work around an API bug. However this is not equivalent, as it may return
+				// fewer results than expected.
+				if ingv.DistanceInKm(*flagLatitude, *flagLongitude, rec.Latitude, rec.Longitude) > *flagMaxRadius {
+					continue
+				}
+			}
+			if pflag.CommandLine.Changed("min-radius") {
+				// work around an API bug. However this is not equivalent, as it may return
+				// fewer results than expected.
+				if ingv.DistanceInKm(*flagLatitude, *flagLongitude, rec.Latitude, rec.Longitude) < *flagMinRadius {
+					continue
+				}
+			}
+		}
 		fmt.Printf("%d) %s\n    Location: %s\n    Magnitude: %.1f\n    Map: https://www.google.com/maps/search/%f,%f/@%f,%f\n    Details: https://terremoti.ingv.it/event/%d for details\n", idx+1, rec.Time, rec.EventLocationName, rec.Magnitude, rec.Latitude, rec.Longitude, rec.Latitude, rec.Longitude, rec.EventID)
+		idx++
 	}
 
 }
