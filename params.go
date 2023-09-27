@@ -57,7 +57,7 @@ func WithMaxLon(l float64) Param {
 
 func WithLat(l float64) Param {
 	return func(r *Request) {
-		r.Lon = &l
+		r.Lat = &l
 	}
 }
 
