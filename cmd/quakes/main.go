@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -20,6 +21,7 @@ var (
 	flagMinRadius    = pflag.Float64P("min-radius", "r", 0.0, "Min radius in degrees from lat/lon. If unspecified, no radius limit is set. If specified, lat/lon are mandatory")
 	flagLimit        = pflag.IntP("limit", "i", 10, "Max number of results to show")
 	flagOrderBy      = pflag.StringP("order-by", "b", "time", "Order by time or magnitude")
+	flagJSON         = pflag.BoolP("json", "j", false, "Print output as json")
 )
 
 // it appears that the radius is not computed properly by the API, so this flag
@@ -74,6 +76,7 @@ func main() {
 		fmt.Printf("No earthquakes found with the specified parameters\n")
 	}
 	idx := 0
+	filteredRecords := make([]ingv.QuakeInfo, 0)
 	for _, rec := range records {
 		if buggyRadiusAPI {
 			if pflag.CommandLine.Changed("max-radius") {
@@ -91,8 +94,18 @@ func main() {
 				}
 			}
 		}
-		fmt.Printf("%d) %s\n    Location: %s\n    Magnitude: %.1f\n    Map: https://www.google.com/maps/search/%f,%f/@%f,%f\n    Details: https://terremoti.ingv.it/event/%d for details\n", idx+1, rec.Time, rec.EventLocationName, rec.Magnitude, rec.Latitude, rec.Longitude, rec.Latitude, rec.Longitude, rec.EventID)
+		filteredRecords = append(filteredRecords, rec)
 		idx++
 	}
-
+	if *flagJSON {
+		out, err := json.Marshal(filteredRecords)
+		if err != nil {
+			log.Fatalf("Failed to marshal JSON: %v", err)
+		}
+		fmt.Println(string(out))
+	} else {
+		for _, rec := range filteredRecords {
+			fmt.Printf("%d) %s\n    Location: %s\n    Magnitude: %.1f\n    Map: https://www.google.com/maps/search/%f,%f/@%f,%f\n    Details: https://terremoti.ingv.it/event/%d for details\n", idx+1, rec.Time, rec.EventLocationName, rec.Magnitude, rec.Latitude, rec.Longitude, rec.Latitude, rec.Longitude, rec.EventID)
+		}
+	}
 }
