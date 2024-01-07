@@ -10,4 +10,4 @@ https://webservices.ingv.it/swagger-ui/dist/?url=https://ingv.github.io/openapi/
 
 ## Command line interface
 
-Located at [cmd/quakes]. Just run `go build`, then `./quakes --help`.
+Located at [cmd/quakes](cmd/quakes). Just run `go build`, then `./quakes --help`.
