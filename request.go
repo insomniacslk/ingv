@@ -14,7 +14,7 @@ import (
 )
 
 // time format used by the INGV API
-const TimeFormat = "2006-01-02T15:04:05.999999"
+const TimeFormat = "2006-01-02T15:04:05"
 
 var TimeLocation = time.UTC
 
@@ -38,8 +38,8 @@ type Request struct {
 	MinRadiusKm                 *float64   `name:"minradiuskm"`
 	MinDepth                    *float64   `name:"mindepth"`
 	MaxDepth                    *float64   `name:"maxdepth"`
-	StartTime                   *time.Time `name:"start_time"`
-	EndTime                     *time.Time `name:"end_time"`
+	StartTime                   *time.Time `name:"starttime"`
+	EndTime                     *time.Time `name:"endtime"`
 	MinMag                      *float64   `name:"minmag"`
 	MaxMag                      *float64   `name:"maxmag"`
 	MagnitudeType               *int       `name:"magnitudetype"`
