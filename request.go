@@ -77,7 +77,13 @@ func (r *Request) ToValues() url.Values {
 		case *string:
 			value = string(*v)
 		case *time.Time:
-			value = (*v).Format(TimeFormat)
+			// FDSNWS reads a naked timestamp as UTC, so the value has to be
+			// CONVERTED before it is formatted, not merely formatted. Without
+			// the .In() a caller in CEST asks for a window two hours in the
+			// future, and the API correctly answers with nothing at all -- no
+			// error, no warning, just an empty result forever. The parse side
+			// below has used TimeLocation since 9b9375c; this side never did.
+			value = (*v).In(TimeLocation).Format(TimeFormat)
 		default:
 			// if this happens, the type of a field of the Request struct is
 			// not handled in this switch, whoops. Just add it
